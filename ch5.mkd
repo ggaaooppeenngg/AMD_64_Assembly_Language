@@ -1,0 +1,116 @@
+#移动数据
+
+汇编移动数据
+
+##定义数据
+
+##data段
+
+data段是定义数据合适的位置
+
+*还有一种data段叫 **.rodata** 这个段内都是只读的，ro代表read-only*
+
+label和directive来定义data段的元素,label代表着该数据内存首地址的引用,除了label还需要定义多少个字节用来存储该数据,这需要一条汇编指令，由相应指令来指定.
+
+相应指令为:
+
+```
+.ascii	字符串
+.asciz	Null结尾字符串
+.byte	字节
+.double	双精度浮点数
+.float	单精度浮点数
+.int	32整型
+.long	32整形
+.octa	16字节整型
+.quad	8字节整型
+.short	16位整型
+.single	单精度浮点型
+```
+一些例子:
+
+```
+output:
+	.ascii "The processor Vedor Id is 'XXXXXXXXX'\n"
+pi:
+	.float 3.14159
+values:
+	.long 100,150,200,250,300
+```
+
+values类似于一个数组values代表100这个数,之后的数需要通过相对位移来访问
+
+*注意如果定义一个16位的整型确按照32位整型读的话，会照样读取4个字节的内存，即使是错误的值*
+
+##定义静态标记
+data段是用来定义变量的,但是也可以定义静态标记,类似于C里面的宏
+```
+.equ factor,	3
+.equ LINUX_SYS_CALL, 0x80
+```
+这些值都是无法改变的,引用这些静态数据只要加一个美元符号就行
+```
+movl $LINUX_SYS_CALL,	%rax
+```
+##bss段
+定义生的内存段，用来为将来会用到的数据保留位置
+
+.comm	为初始化的内存段
+.lcomm	未初始化的本地内存段
+形式是*.comm symbol,length* symbol是分配内存的标记，length是内存字节为单位的长度
+
+```
+.section .bss
+.lcomm buffer,10000
+
+```
+bss的内容不会存储在可执行件里.上面这段对可执行为件大小不会有较大影响，但是换成
+data的话就会暂居位置.
+*fill*指令会为一段内存自动填充值，用0.
+
+```
+# sizetest1.s - A sample program to view the executable size
+.section .data
+buffer:
+.fill 10000
+.section .text
+.globl _start
+_start:
+movl $60, %rax
+movl $0, %rdi
+syscall
+```
+##移动数据
+
+MOV istructio is used as a general-purpose mover.
+
+##The MOV instruction formats
+`movx source,destination`,source和destination可以是内存地址，在内存中的数据，之前定义的数据，还有寄存器.
+
+x代表操作数的大小
+q 64bit
+l 32bit
+w 16bit
+b 8bit
+所以把RAX寄存器的值移动到RBX寄存器就是`movq %rax,%rbx`
+16位的是`movw %ax,%bx`
+有一些使用MOV的规则，先随意贴一下,以后再解释
+```
+ An immediate data element to a general-purpose register
+ An immediate data element to a memory location
+ A general-purpose register to another general-purpose register
+ A general-purpose register to a segment register
+ A segment register to a general-purpose register
+ A general-purpose register to a control register
+ A control register to a general-purpose register
+ A general-purpose register to a debug register
+ A debug register to a general-purpose register
+ A memory location to a general-purpose register
+ A memory location to a segment register
+ A general-purpose register to a memory location
+ A segment register to a memory location
+```
+##使用带下标的内存位置
+格式`base_address(offset_address,index,size)`,数据会被定位于base\_address + offset\_address + index \* size
+
+
