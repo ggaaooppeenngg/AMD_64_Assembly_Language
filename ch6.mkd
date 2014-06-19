@@ -8,7 +8,166 @@ RIP在执行完之后,会自增指向下一条指令.
 
 #无条件分支
 不需要条件就执行跳转的指令是 *Jumps*,*Calls*,*Interrupts*,跳转，函数调用和中断.
+
+##跳转
 jmp 和 C中的goto是差不多的.
 例如`jmp location ` location是要跳转目的内存的地址，在汇编当中是一个标记
 [有个图说明指令跳转:以后补]()
+
+```
+#jumptest.s - An example of the jmp instruction
+.section .text
+.globl _start
+_start:
+	nop
+	mov $60,%rax
+	jmp overhere
+	mov $10,%rbx
+	mov $0 ,%rdi
+	syscall
+overhere:
+	mov $20,%rbx
+	mov $0 ,%rdi
+	syscall
+```
+60是Linux的exit的系统调用交给rax，无条件跳转到overhere.
+
+##函数调用
+另一种无条件跳转就是call了.和无条件跳转类似，但是能够记住调用的地方，并且根据要求返回
+形式是`call address` address也是一个标记，代表函数指令的地址, 返回指令没有操作数就是助记符**RET**
+函数调用是通过栈来存储原先的指令指针EIP，然后再修改EIP到函数所在的内存处，返回后存栈中取出EIP返回到原先的指令.
+[右掌图说明：以后补]()
+RBP总是指向栈底，在函数调用开始的时候，所以每次函数调用都会把RSP传给RBP
+*函数调用在11章会有详细解释*
+函数调用的形式是这样的
+
+```
+function_label:
+	push	%rbp
+	mov	%rsp,%rbp
+	< normal function code goes here>
+	mov	%rbp,%rsp
+	pop	%rbp
+	ret
+```
+
+##补充:64位调用c函数也不是通过栈的方式而是和系统调用一样
+*我通过反汇编观察得到的调用printf的代码是用eax寄存器，猜测是然后用gcc编译通过并且可运行,动态链接库报错说使用一个无效的共享库*
+
+```
+#printf test
+	.section .rodata
+output:
+	.string "This is section %d\n"
+	.section .text
+	.globl main
+
+main:
+	movl $output,%edi
+	movl $1,%esi
+	movl $0,%eax
+	call printf
+	movl  $0 ,%edi
+	call exit
+```
+运行
+```
+as -o printf.o printf.s
+gcc -o prinf printf.o
+./prinf
+```
+可以得到正确的运行结果
+
+下面是函数调用的例子,用gcc编译的所以符号是main
+
+```
+#calltest.s - An example of using the CALL instrcution
+	.section .data
+output:
+	.asciz "This is section %d\n"
+	.section .text
+	.globl main
+main:
+	movl $output,%edi
+	movl $1,%esi
+	movl $0,%eax
+	call printf
+	call overhere
+	movl $output,%edi
+	movl $3,%esi
+	movl $0,%eax
+	call printf
+	movl $0,%edi
+	call exit
+overhere:
+	push %rbp
+	movq %rsp,%rbp	
+	movl $output,%edi
+	movl $2,%esi
+	movl $0,%eax
+	call printf
+	mov %rbp,%rsp
+	pop %rbp
+	ret
+```
+
+##中断
+
+第三种无条件跳转就是中断,中断会停止当前执行的代码路劲转而由中断处理程序执行，中断有两种
+
+*   软中断
+*   硬中断
+
+这两个的解释，以后再解释
+
+
+#条件分支
+条件分支取决于EFLAGS这个寄存器.
+在EFLAGS中有许多bit代表的定义，但是只有5个是和条件分支有关的.
+
+*   ❑ Carry flag (CF) - bit 0 (lease significant bit)，进位标记
+*   ❑ Overflow flag (OF) - bit 11 , 溢出标记
+*   ❑ Parity flag (PF) - bit 2 , 
+*   ❑ Sign flag (SF) - bit 7 ,
+*   ❑ Zero flag (ZF) - bit 6 ,
+
+这个几个标记以后再补充,反正代表某个特定的条件.每个条件转移指令都要查看这个寄存器的值来决定跳转是否执行.
+
+#条件跳转指令
+条件跳转指令的格式`jxx address`，`xx`是一个一到三个字符的标志，代表相应的条件,address 是要跳转的地方.
+下面是条件跳转表
+
+JA 	Jump if above CF=0 and ZF=0
+JAE 	Jump if above or equal CF=0
+JB 	Jump if below CF=1
+JBE 	Jump if below or equal CF=1 or ZF=1
+JC 	Jump if carry CF=1
+JCXZ 	Jump if CX register is 0 JECXZ Jump if ECX register is 0 JE Jump if equal ZF=1
+JG 	Jump if greater ZF=0 and SF=OF
+JGE 	Jump if greater or equal SF=OF
+JL 	Jump if less SF<>OF
+JLE 	Jump if less or equal ZF=1 or SF<>OF
+JNA 	Jump if not above CF=1 or ZF=1
+JNAE 	Jump if not above or equal CF=1
+JNB 	Jump if not below CF=0
+JNBE 	Jump if not below or equal CF=0 and ZF=0
+JNC 	Jump if not carry CF=0
+JNE 	Jump if not equal ZF=0
+JNG 	Jump if not greater ZF=1 or SF<>OF
+JNGE 	Jump if not greater or equal SF<>OF
+JNL 	Jump if not less SF=OF
+JNLE 	Jump if not less or equal ZF=0 and SF=OF
+JNO 	Jump if not overflow OF=0
+JNP 	Jump if not parity PF=0
+JNS 	Jump if not sign SF=0
+JNZ 	Jump if not zero ZF=0
+JO 	Jump if overflow OF=1
+JP 	Jump if parity PF=1
+JPE 	Jump if parity even PF=1
+JPO 	Jump if parity odd PF=0
+JS 	Jump if sign SF=1
+JZ 	Jump if zero ZF=1
+
+你会发现有一些冗余的指令(例如JA和JG).实际上他们的区别在于操作数是否是有符号数还是无符号数.具体情况在第七章会说.
+
 
