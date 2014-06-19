@@ -133,10 +133,11 @@ overhere:
 
 这个几个标记以后再补充,反正代表某个特定的条件.每个条件转移指令都要查看这个寄存器的值来决定跳转是否执行.
 
-#条件跳转指令
+##条件跳转指令
 条件跳转指令的格式`jxx address`，`xx`是一个一到三个字符的标志，代表相应的条件,address 是要跳转的地方.
 下面是条件跳转表
 
+```
 JA 	Jump if above CF=0 and ZF=0
 JAE 	Jump if above or equal CF=0
 JB 	Jump if below CF=1
@@ -167,7 +168,70 @@ JPE 	Jump if parity even PF=1
 JPO 	Jump if parity odd PF=0
 JS 	Jump if sign SF=1
 JZ 	Jump if zero ZF=1
+```
 
 你会发现有一些冗余的指令(例如JA和JG).实际上他们的区别在于操作数是否是有符号数还是无符号数.具体情况在第七章会说.
+条件跳转需要一个操作数，就是要跳转的地址.
+有两种条件跳转
+
+*  短跳转
+*  长跳转
 
 
+##比较指令
+
+比较指令是最常用的通过比较两个操作数来进行条件跳转的.比较跳转通过比较两个操作数设置EFLAGS寄存器的值.
+形式是 `cpm operand1, openrand2`
+比较指令作减法(operand1,openrand2),剑法完成侯EFLAGS的值就会被设置.
+*注意AT&T的汇编和intel操作数的顺序是反的.*
+
+
+```
+# cmptest.s - An example of using the CMP and JGE instructions
+
+.section .text
+.globl _start
+_start:
+	nop
+	mov $15,%rax
+	mov $10,%rbx
+	cmp %rax,%rbx
+	jge greater
+	mov $60,%rax
+	syscall
+greater:
+	mov $20,%rbx
+	mov $60,%rax
+	syscall
+```
+因为RBX寄存器比RAX的值小，所以条件跳转没有发生.
+
+##使用flag bits的例子
+
+###Zero flag
+```
+mov $30,%rax
+sub $30,%rax
+jz overthere
+
+```
+还可以用来控制循环
+```
+	movl $10, %rdi
+loop1:
+	< other code instructions>
+	dec %rdi
+	jz out
+	jmp loop1
+out:
+```
+### overflow flag	
+溢出跳转,例子差不多，以后补
+###partiy flag
+奇偶校验,偶是1，奇是0
+###sign flag
+符号改变
+###carry flag
+进位
+
+##循环
