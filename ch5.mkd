@@ -76,8 +76,8 @@ buffer:
 .section .text
 .globl _start
 _start:
-movl $60, %rax
-movl $0, %rdi
+movq $60, %rax
+movq $0, %rdi
 syscall
 ```
 ##移动数据
@@ -111,6 +111,62 @@ b 8bit
  A segment register to a memory location
 ```
 ##使用带下标的内存位置
+
 格式`base_address(offset_address,index,size)`,数据会被定位于base\_address + offset\_address + index \* size
 
+##使用寄存器寻址
 
+可以通过美元符可以获取数据的地址,例如`movq $values, %edi`
+
+`4(%edi)` 表示4个自己之后的地址.
+
+##条件Move指令
+下次解释,很多不需要控制流而依靠单条指令实现条件Move的。
+
+##交换数据
+一搬交换数据要写3行带个temp，但是有些集成的指令就能做到.
+
+##栈
+栈是后进先出的数据结构，有push和pop操作
+
+##栈如何工作
+栈就先不解释了,栈底对应的是内存的顶部,push要栈顶指针-1,pop是栈顶指针+1
+push,pop操作也有类似的movx操作，x表示数据的大小
+可以用print/d 和x/x  来观察变化堆栈的变化
+特别是print/x $esp 看看栈顶指针的变化
+```
+#pushpop.s - An example of using the PUSH and POP instructions
+.section .data
+data:
+	.int 125
+.section .text
+.globl _start
+_start:
+	nop
+	movq $24420,%rcx
+	movw $250,%bx
+	pushq %rcx
+	pushw %bx push data
+	push $data
+	pop  %rax
+	pop %rax
+	popw %ax
+	popq %rax
+	mov $60 ,%rax
+	mov $0  ,%rdi
+	syscall
+```	
+##PUSH和POP所有寄存器
+```
+PUSHA/POPA	Push or pop all of the 16-bit general-purpose registers
+PUSHAD/POPAD	Push or pop all of the 32-bit general-purpose registers
+PUSHF/POPF	Push or pop the lower 16 bits of the EFLAGS register
+```
+##手动操作RSP和RBP寄存器
+RSP就是栈顶指针可以随意调用这个寄存器，RSP是基于RBP的相对位置方位栈的.
+
+##有效利用内存访问
+//TODO
+
+##总结
+熟悉移动指令和一般寄存器
