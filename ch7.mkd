@@ -1,0 +1,89 @@
+#使用数字
+表示数字和使用数字是汇编语言的重要部分
+
+##数字类型
+核心的数字类型有几种
+```
+Unsigned integers
+Signed integers
+Binary-coded decimal
+Packed binary-coded decimal
+Single-precision floating-point
+Double-precision floating-point
+Double-extended floating-point
+
+```
+
+除了基础的数字类型，在奔腾处理器上SIMD extensions增加一些更高级的数字类型
+
+```
+64-bit packed integers
+128-bit packed integers
+128-bit packed single-precision floating-point
+128-bit packed double-precision floating-point
+
+```
+##整型
+
+在汇编当中最基本的就是整型.
+
+###标准整型大小
+
+```
+Byte: 8 bits
+Word: 16 bits
+Doubleword: 32 bits
+Quadword: 64 bits
+
+```
+理解存储在内存当中高于一个字节的整数,是按小端存储的。这代表着最低位的字节存储在最低位字节的内存位置，剩下的高位字节紧随其后.
+但是当整型数据移动到寄存器的时候，是按大端存储的，这个时候就有些令人困惑了.
+这种转化对于用户来说是透明的，所以也不需要特别的担心，但是当你调试程序的时候发现下面的情况，不要慌张.
+```
+(gdb) x/x &data
+0x80490bc <data>:	0x00000225
+(gdb) x/4b &data
+0x80490bc <data>:	0x25	0x02	0x00	0x00
+(gdb) print/x $rax
+$1 = 0x225
+(gdb)
+
+```
+//TODO:64位估计不是x/4b 猜是x/8b,以后再验证
+十进制数*549*存储在内存的data处，然后移动到RAX寄存器.第一条*gdb*指令显示的是在data处十六进制的内容.第二条指令显示4个用来构成这个字节的内存，这就是小端的形式.
+
+**注意前方高能，需要脑补机组的知识**
+
+###无符号整数
+无符号整数就是一种你看到是多少就是多少的类型("what you see is what you get").构成数字的字节直接用来表示这个数.
+相应无符号整数的范围
+
+```
+
+Bits	Integer Values
+8	0 through 255
+16	0 through 65,535
+32	0 through 4,294,967,295
+64	0 through 18,446,744,073,709,551,615
+
+```
+以后举例子几个类型内存的的表示,基本上大同小异.
+
+###有符号数
+有三种方法表示符号数分别是
+```
+Signed magnitude
+One’s complement
+Two’s complement
+
+```
+###Signed magnitude
+有首位表示正负，但是会有+0和-0出现，而且不能通过直接加减得到对应的答案.
+
+###One's complement
+传说中的反码表示，把对应位取反，比如00000001对应的是1111110,这样的方式还是有问题，具体以后解释.
+
+###Two's complement
+传说中的补码表示，负数取反加1,正数不变就是补码.这样的好处是加减的时候得到的补码能够正确反应结果.
+###使用有符号数
+
