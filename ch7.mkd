@@ -126,7 +126,93 @@ movl $0, %ebx
 movw %ax, %ebx
 ```
 这样才能保证移动是正确的.
-但是有一个**MOVZX**指令可以帮你完成这件事高位清零的事.
+但是有一个**MOVZX**指令可以帮你完成这件事高位清零的事.当然使用的时候也要注意源寄存器的大小，以免没有完全复制.
+
 ###扩展有符号整数
+扩展有符号数又不简单了，因为有符号数的-1（11111111）如果要扩展到doubleword会变成000000001111111，这个数是127而不是-1了.
+所以对于有符号数来说增加的位需要为1.
 
+Intel提供了**MOVSX**指令允许有扩展有符号数并且保持符号不变。这有点像*MOVZX*但是假设操作数的是有符号的数.
+//TODO:补充一个例子
 
+###定义一个整数
+
+在第五章当中提到的.int,.short,.long命令都是用来定义整型数字的.还可以用.quad来定义quadword有符号数.
+//TODO:这个似乎32和64有点区别，以后更
+
+##SIMD 寄存器
+The Intel Single Instruction Mutiple Data技术能够提供额外的方法使用整型.//TODO:给个简单的解释
+
+###MMX 整型
+The Multimedia Extension technology 提供3个整型类型:
+```
+64-bit packed byte integers
+64-bit packed word integers
+64-bit packed doubleword integers
+```
+每个MMX寄存器可以容纳多个整型元素,如图,补个图
+//TODO:加个图
+
+###移动 MMX 整型
+```
+# mmxtest.s - An example of using the MMX data types
+.section .data
+values1:
+.int 1, -1
+values2:
+.byte 0x10, 0x05, 0xff, 0x32, 0x47, 0xe4, 0x00, 0x01
+.section .text
+.globl _start
+_start:
+nop
+movq values1, %mm0
+movq values2, %mm1
+mov $60,%rax
+syscall
+```
+//TODO:说明
+
+###SSE 寄存器
+The Streaming SIMD Extension(SSE)技术提供128bit的XMM寄存器.The SSE2 techonology(在奔腾4引入)提供额外的4个整数类型
+```
+128-bit packed byte integers
+128-bit packed word integers
+128-bit packed doubleword integers
+128-bit packed quadword integers
+
+```
+//TODO:补充个图
+
+###移动 SSE 整型
+
+依赖 **MOVDQA**和**MOVDQU** 命令.//TODO:补充例子和解释
+
+##二进制编码十进制
+The Binary Coded Decimal (BCD) 数据类型存在了很长的时间.
+
+##什么是BCD
+//TODO:解释
+##FPU BCD 数值
+BCD 使用FPU寄存器来存储
+//TODO:解释
+##移动 BCD 数值
+依赖`fbld source`命令，source是一个80bit内存的地址
+```
+#bcdtest.s - An example of using BCD integer values
+.section .data
+data1:
+	.byte 0x34, 0x12, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
+data2:
+	.int 2
+.section .text
+	.globl _start
+_start:
+	nop
+	fbld data1
+	fimul data2
+	fbstp data1
+	mov $60,%rax
+	syscall
+```
+//TODO:解释
+##浮点数
