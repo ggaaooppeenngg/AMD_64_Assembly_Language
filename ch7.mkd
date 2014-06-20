@@ -85,5 +85,48 @@ Two’s complement
 
 ###Two's complement
 传说中的补码表示，负数取反加1,正数不变就是补码.这样的好处是加减的时候得到的补码能够正确反应结果.
+
 ###使用有符号数
+
+```
+# inttest.s - An example of using signed integers
+.section .data
+data:
+.int -45
+.section .text
+.globl _start
+_start:
+nop
+movl $-345, %ecx
+movw $0xffb1, %dx
+movl data, %ebx
+mov  $60, %rax
+syscall
+```
+//TODO:改成64位的寄存器
+这些都是使用数字的方法，但是不同的是我们通过调试的时候会有如下情况
+```
+(gdb) info reg
+eax	0x0	0
+ecx	0xfffffea7	-345
+edx	0xffb1	65457
+ebx	0xffffffd3 -45
+
+```
+数字都是存对了，但是edx之所以是那个数是因为将edx整个看作一个数了，而不是取dx的那几位.
+所以寄存器在分辨数字的时候也是挺令人困惑的.
+
+##扩展数字
+有时候你需要将word大的数字放到doubleword大的地方，这看起来很容易，但实际上有点困难.
+
+###扩展无符号整数
+向大尺寸移动的时候要确保高位都被设为0.例如`movw %ax,%bx`这个不能保证正确，你应该将高位清零.
+```
+movl $0, %ebx
+movw %ax, %ebx
+```
+这样才能保证移动是正确的.
+但是有一个**MOVZX**指令可以帮你完成这件事高位清零的事.
+###扩展有符号整数
+
 
