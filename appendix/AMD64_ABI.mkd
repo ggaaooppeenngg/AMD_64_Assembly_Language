@@ -169,3 +169,46 @@ fields in the eightbyte:
 Figure 3.4: Register Usage
 
 [figure\_3.4.png](../imgs/figure_3.4.png)
+
+####返回值 返回值根据下面的算法进行
+
+1. 用分类算法讲返回值分类 
+2. If the type has class MEMORY, then the caller provides space for the return
+value and passes the address of this storage in %rdi as if it were the first
+argument to the function. In effect, this address becomes a “hidden” first ar-
+gument. This storage must not overlap any data visible to the callee through
+other names than this argument.
+On return %rax will contain the address that has been passed in by the
+caller in %rdi.
+3. If the class is INTEGER, the next available register of the sequence %rax,
+%rdx is used.
+4. If the class is SSE, the next available vector register of the sequence %xmm0,
+%xmm1 is used.
+5. If the class is SSEUP, the eightbyte is returned in the next available eightbyte
+chunk of the last used vector register.
+6. If the class is X87, the value is returned on the X87 stack in %st0 as 80-bit
+x87 number.
+7. If the class is X87UP, the value is returned together with the previous X87
+value in %st0.
+8. If the class is COMPLEX\_X87, the real part of the value is returned in
+%st0 and the imaginary part in %st1.
+//TODO:示例
+```
+typedef struct {
+	int a, b;
+	double d;
+} structparm;
+structparm s;
+int e, f, g, h, i, j, k;
+long double ld;
+double m, n;
+__m256 y;
+extern void func (int e, int f,
+	structparm s, int g, int h,
+	long double ld, double m,
+	__m256 y,
+	double n, int i, int j, int k);
+func (e, f, s, g, h, ld, m, y, n, i, j, k);
+
+```
+![3.6](src="../imgs/figure_3.6.png")
