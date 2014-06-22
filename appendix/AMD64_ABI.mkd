@@ -168,7 +168,7 @@ fields in the eightbyte:
 
 Figure 3.4: Register Usage
 
-[figure\_3.4.png](../imgs/figure_3.4.png)
+![3.4](../imgs/figure_3.4.png)
 
 ####返回值 返回值根据下面的算法进行
 
@@ -211,4 +211,4 @@ extern void func (int e, int f,
 func (e, f, s, g, h, ld, m, y, n, i, j, k);
 
 ```
-![3.6](src="../imgs/figure_3.6.png")
+![3.6](../imgs/figure_3.6.png)
