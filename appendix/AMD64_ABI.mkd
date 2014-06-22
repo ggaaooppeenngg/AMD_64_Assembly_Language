@@ -1,0 +1,99 @@
+#AMD 64 ABI
+这些内容翻译自:http://www.x86-64.org/documentation/abi.pdf
+翻译时间2014-06-22
+
+#Chapter 3
+#Low Level System Information
+##3.1 Machine Interface
+###3.1.1 Processor Architecture
+###3.1.2 Data Representation
+
+####基础类型
+Figure 3.1 展示了 ISO'C 和处理器之间的数据对应.
+
+Type	|C	|sizeof	|Alignment	|AMD64 Architecture
+-	|-	|-	|-		|-
+Integral|char	|1	|1		|signed byte
+-	|short	|2	|2		|signed twobyte
+-	|int	|4	|4		|signed fourbyte
+-	|long	|8	|8		|signed eightbyte
+-	|\_\_int128	|16	|16	|singed sixteenbyte
+Pointer	|any-type *	|8	|8	|unsigned eightbyte
+	|any-type (*)()	|8	|8	|unsigned eightbyte
+Floating-ponint	|float	|4	|4	|single(IEEE-754)
+-	|double	|8	|8	|double(IEEE-754)
+-	|long double	|8	|8	|80-bit extended(IEEE-754)
+-	|\_\_float128	|16	|16	|128-bit extended(IEE0754)
+Decimal-floating-point	|\_Decimal32	|4	|4	|32bit BID
+Decimal-floating-point	|\_Decimal64	|8	|8	|64bit BID
+Decimal-floating-point	|\_Decimal128	|16	|16	|128bit BID
+
+Packed	|\_\_m64	|8	|8	|MMX and 3DNow!
+Packed	|\_\_m128	|16	|16	|SSE and SSE-2
+Packed	|\_\_m256	|32	|32	|AVX
+
+###Aggregates and Unions
+###Bit-Fields
+
+##3.2 函数调用序列
+
+这节描述标准的函数调用方法，包括stack frame layout 和寄存器使用，参数传递等等.
+标准函数调用序列只适用于全局函数，对于局部函数来说，需要使用别的约定，但是如果能够使用的话，尽量用标准方法调用函数。
+
+###3.2.1 寄存器和栈
+
+AMD64架构的CPU提供16个通用寄存器。除此之外还提供16个SSE寄存器，每个128个bit宽。还有8个浮点指针寄存器，每个80个bits宽。
+Intel AVX(Advanced Vector Extensions)提供 16个 256-bit 宽的AVX寄存器(%ymm0 - %ymm15). 低128-bits是128-bit SSE寄存器(%xmm0 - %xmm15)的别名。
+
+下面的部分讨论每个寄存器的用法。寄存器%rbp和%rbx和%r12到%r16*属于*调用函数，被调用函数需要去维护这些值.换句话说，这些寄存器都是要存在栈上的。
+
+###3.2.2 栈
+
+除了寄存器，每个函数都在运行时的栈上有一部分作为自己的栈。栈从高地址开始，随着栈顶指针的减小而增长。3.3展示了栈的组成。
+
+	Figure 3.3 Stack Frame with Base Pointer
+
+Position	|Contents	|Frame
+-		|-		|-
+8n+16(%rbp)	|第n个8字节参数	|Previous
+		|...		|
+16(%rbp)	|第0个8字节参数	|
+8(%rbp)		|返回地址	|Current
+0(%rbp)		|previous %rbp	|
+-8(%rbp)	|不确定的变量	|
+		|...		|
+0(%rsp)		|		|
+-128(%rsp)	|red zone	|
+
+最后一个变量要是16字节对齐，也就是(%rsp+8)是16的倍数
+
+%rsp 后面的128-byte区域是保留的，不应该被信号或者中断处理给修改。因此函数可以使用这个地方作为临时的不会被其他函数获取的数据存储域.
+//TODO:这块叫红区，但是不是很明白以后解释.
+
+###3.2.3 参数传递
+
+参数有传到寄存器里的也有压到栈里面的.
+
+####Definitions
+
+####INTEGER
+适合通用寄存器
+
+####SSE
+适合向量寄存器
+
+###SSEUP	
+
+####X87,X87UP
+
+包含通过X87 FPU 返回的类型
+
+####COMPLEX\_X87
+
+包含通过X87 FPU 返回的类型
+
+####NO\_CLASS
+算法中用来初始化，一般是填充或者清空结构体或者联合体.
+
+####MEMORY
+这类是通过内存中的栈来传递和返回的
