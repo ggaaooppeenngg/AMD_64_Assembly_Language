@@ -82,7 +82,7 @@ Position	|Contents	|Frame
 ####SSE
 适合向量寄存器
 
-###SSEUP	
+####SSEUP	
 
 ####X87,X87UP
 
@@ -97,3 +97,75 @@ Position	|Contents	|Frame
 
 ####MEMORY
 这类是通过内存中的栈来传递和返回的
+
+####分类
+每个参数的大小都会向上取整到eightbytes.
+```
+• Arguments of types (signed and unsigned) _Bool, char, short, int,
+long, long long, and pointers are in the INTEGER class.
+• Arguments of types float, double, _Decimal32, _Decimal64 and
+__m64 are in class SSE.
+• Arguments of types __float128, _Decimal128 and __m128 are split
+into two halves. The least significant ones belong to class SSE, the most
+significant one to class SSEUP.
+• Arguments of type __m256 are split into four eightbyte chunks. The least
+significant one belongs to class SSE and all the others to class SSEUP.
+• The 64-bit mantissa of arguments of type long double belongs to class
+X87, the 16-bit exponent plus 6 bytes of padding belongs to class X87UP.
+• Arguments of type __int128 offer the same operations as INTEGERs,
+yet they do not fit into one general purpose register but require two registers.
+For classification purposes __int128 is treated as if it were implemented
+as:
+typedef struct {
+	long low, high;
+} __int128;
+with the exception that arguments of type __int128 that are stored in
+memory must be aligned on a 16-byte boundary.
+• Arguments of complex T where T is one of the types float or double
+are treated as if they are implemented as:
+struct complexT {
+	T real;
+	T imag;
+};
+• A variable of type complex long double is classified as type COM-
+PLEX_X87.
+
+```
+
+结构体和数组以及联合体:下面一大堆暂时看不懂...
+1.   大小超过eightbyte或者是一段不对齐的域的话，就分为MEMORY类型.
+2.   If a C++ object has either a non-trivial copy constructor or a non-trivial
+destructor , it is passed by invisible reference (the object is replaced in the
+parameter list by a pointer that has class INTEGER) .
+3.   If the size of the aggregate exceeds a single eightbyte, each is classified
+separately. Each eightbyte gets initialized to class NO\_CLASS.
+4.   Each field of an object is classified recursively so that always two fields are
+considered. The resulting class is calculated according to the classes of the
+fields in the eightbyte:
+
+	*  (a) If both classes are equal, this is the resulting class.
+	*  (b) If one of the classes is NO\_CLASS, the resulting class is the other class.
+	*  (c) If one of the classes is MEMORY, the result is the MEMORY class.
+	*  (d) If one of the classes is INTEGER, the result is the INTEGER.
+	*  (e) If one of the classes is X87, X87UP, COMPLEX\_X87 class, MEMORY is used as class.
+	*  (f) Otherwise class SSE is used.
+
+5.  Then a post merger cleanup is done:
+	*  (a) If one of the classes is MEMORY, the whole argument is passed in	memory.
+	*  (b) If X87UP is not preceded by X87, the whole argument is passed in	memory.
+	*  (c) If the size of the aggregate exceeds two eightbytes and the first eightbyte isn’t SSE or any other eightbyte isn’t SSEUP, the whole argument is passed in memory.
+	*  (d) If SSEUP is not preceded by SSE or SSEUP, it is converted to SSE.
+
+####Passing 当参数被分类侯，寄存器(从左到右)的分配:
+
+1.  如果是MEMORY类的，就传递到栈上.
+2.  如果是INTEGER的话，%rdi，%rsi，%rdx，%rcx，%r8和%r9用来传递参数.
+3.  如果是SSE，%xmm1到%xmm7用来传递参数.
+4.  如果是SSEUP那么传到下一个合适的最近被使用的向量寄存器8字节部分,
+5.  如果是X87,X87UP或者是COMPLEX\_X87,就传入内存.
+
+//TODO:更多补充，暂时看不懂
+
+Figure 3.4: Register Usage
+
+[figure\_3.4.png](../imgs/figure_3.4.png)
