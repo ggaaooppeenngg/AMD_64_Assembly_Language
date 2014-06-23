@@ -12,3 +12,48 @@
 //TODO:例子解释
 
 ###检测进位和溢出的条件
+在进行整数的数学运算的时候一定要注意EFLAGS寄存器里面是否有奇怪的东西冒出来。对于无符号的整型来说，如果二进制运算有进位的话(也就是数字大于最大数)，carry flag就会被设置.对于有符号的整型来说,overflow flag是用于表示溢出条件的,也就是数字大于了最大数或者数字小于了最小数.
+
+*进位和溢出标志都是相对数据大小来设置的,比如*ADDB*就限制在255,而*ADDW*就限制在65535*
+
+*addtest3.s* 就展示了如何获取无符号数相加的进位条件
+
+```
+# addtest3.s - An example of detecting a carry condition
+.section .text
+.globl _start
+_start:
+	nop
+	movq $0	,%rbx
+	movb $190,%bl
+	movb $10,%al
+	addb %al,%bl
+	jc over
+	movq $60,%rax
+	movq %rbx,%rdi
+	syscall
+over:
+	movq $60, %rax
+	movq $0, %rdi
+	syscall
+```
+?是一个全局变量,存的是进程的exit code,这里把结果写到rdi寄存器里,获取进程的返回值.编译后运行
+
+```
+./addtest3
+echo $?
+100
+```
+如果把其中的两段换成
+```
+movb $190,%bl
+movb $100,%al
+```
+在执行
+```
+./addtest3
+echo $?
+0
+```
+可以看到进位条件起作用了.
+

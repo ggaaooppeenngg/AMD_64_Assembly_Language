@@ -212,3 +212,44 @@ func (e, f, s, g, h, ld, m, y, n, i, j, k);
 
 ```
 ![3.6](../imgs/figure_3.6.png)
+
+##3.3 操作系统接口
+
+###3.3.1 异常接口
+AMD64更换模式来处理异常，这可以是同步的也可以是非同步的。
+同步的异常可以由指令执行引起，能够被进程显示的触发。
+异常被分来faults,traps,aborts三种。
+
+####硬件异常类型
+
+The operating system defines the correspondence between hardware exceptions
+and the signals specified by signal (BA\_OS) as shown in table 3.1. Contrary
+to the i386 architecture, the AMD64 does not define any instructions that generate
+a bounds check fault in long mode.
+
+###3.3.2 虚拟地址空间
+尽管AMD64的架构使用64-bit的指针，但是实现的时候只被用于处理48-bit的地址。因此只能使用 0x00000000 00000000 到 0x00007fff ffffffff的地址空间。
+进程有三个段text，data和stack。共享库会添加其他的段或者进程动态添加段。
+
+###3.3.3 页大小
+系统允许页大小的是2的幂，在4KB到64KB之间.
+
+###3.3.4 虚拟地址分配
+//TODO:以后再解释
+
+##3.4 进程初始化
+
+###3.4.1 初始化栈和寄存器
+
+####特殊的寄存器
+//中间跳过很多
+
+##3.5 代码示例
+这节都是一些代码的示例，来演示如何调用函数，接触静态对象和交换程序控制权等。不像之前的材料，这段材料不是特别规范。
+
+###3.5.3 结构限制
+
+**Small code model** 被执行的代码段的虚拟地址是在link time才知晓的。
+
+###3.5.5 函数调用
+
