@@ -55,5 +55,111 @@ movb $100,%al
 echo $?
 0
 ```
+
 可以看到进位条件起作用了.
+
+*如果你对要进行相加的无符号数的大小不是很清楚的话,最后要检验一下进位标志,如果你很清楚你操作的数值的大小,那就可以避免检查进位标志*
+
+如果是进行有符号数加法的话,进位标志就不管用了.对于无符号数来说这个是管用的,但是对于有符号数来说就是非常无意义的了.
+
+取而代之,当你使用有符号数的时候,你需要关注溢出标志.
+
+
+
+```
+# addtest4.s - An example of detecting a carry condition
+.section .data
+
+output:
+	.asciz "The result is %d\n"
+
+.section .text
+
+.globl _start
+_start:
+	movl $-190876934, %ebx
+	movl $-159230143, %eax
+	addl %eax,%ebx
+	jo over
+	movq $2,%rax
+	movq %rbx,%rsi
+	movl $output,%edi
+	call printf
+	movq $0 ,%rdi
+	call exit
+over:
+	movq $2 ,%rax
+	movq $0 ,%rsi
+	movq $output, %rdi
+	call printf
+	movq $0 ,%rdi
+	call exit
+```
+这段程序用了C函数,所以记得链接C的函数库.具体内容参见第四章.
+```
+as -o addtest4.o addtest4.s 
+ld -dynamic-linker /lib64/ld-linux-x86-64.so.2 -o addtest4 -lc addtest4.o
+./addtest4 
+The result is -350107077
+```
+如果将其中两段代码改成
+
+```
+movl $-1590876934, %ebx
+movl $-1259230143, %eax
+```
+
+可以自己试试看看结果,就能看到溢出的效果了.
+
+### ADC 命令
+如果有需要使用到非常大的符号数和无符号数的话(大小超过ADD能够使用的范围),那么妮可以把这些数拆分成段,在每段数据上作加法.
+因此,你需要检测每个加法的进位以.如果进位标记被设置了的话,那么下个数据段就要进1,就像图8.1展示的一样.
+
+![figure.8\_1](../imgs/figure_8.1.png)
+
+格式是`adcx source,destination` 什么意思就不解释了.
+
+### 一个ADC的例子
+这段代码是32位的,暂时还不知道64是怎么把两个寄存器当作一个寄存器来printf的.
+
+```
+# adctest.s - An example of using the ADC instruction
+.section .data
+data1:
+	.quad 7252051615
+data2:
+	.quad 5732348928
+output:
+	.asciz “The result is %qd\n”
+.section .text
+.globl _start
+_start:
+	movl data1, %ebx
+	movl data1+4, %eax
+	movl data2, %edx
+	movl data2+4, %ecx
+	addl %ebx, %edx
+	adcl %eax, %ecx
+	pushl %ecx
+	pushl %edx
+	push $output
+	call printf
+	addl $12, %esp
+	pushl $0
+	call exit
+```
+//TODO: 把这个代码转换成64位的,不过暂时还搞不清怎么printf,猜测是推到栈里面,然后用栈指针,或者存到一段内存里面之类的,还有64的更大数字是怎么算的.
+
+看代码也知道就是如果有进位的话,adc就会把进位也算进去,最后两部分当做一个数来看.
+
+##减法
+如果你对整数加法已经有经验了的话,那么减法对于你来说就是吹口气的事.
+
+###SUB 命令
+
+减法最基础的命令就是SUB命令.就像ADD命令一样,能够被用来做有符号数和无符号数的减法.形式是 `subx source,destination`
+//TODO: 跟ADD差不多的样子,以后补充
+###减法的进位和溢出
+
+###SBB命令
 
