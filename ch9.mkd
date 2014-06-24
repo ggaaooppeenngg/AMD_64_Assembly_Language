@@ -117,5 +117,152 @@ st4            211.44032100000001150874595623463392	(raw 0x4006d370b8e086bdf800)
 FST 命令用来拷贝栈顶的值到内存中.
 FSTP 命令也会赋值ST0寄存器的值,但是会弹栈.弹栈之后下面的值都会提升.
 现在我们基本掌握了操作FPU栈的方法,下面就来进入运算部分.
+
 ##基本浮点运算
+
+FPU能够进行基本的浮点运算,基本功能如下
+
+```
+Instruction 	Description
+FADD 	Floating-point addition
+FDIV 	Floating-point division
+FDIVR 	Reverse floating-point division
+FMUL 	Floating-point multiplication
+FSUB 	Floating-point subtraction
+FSUBR 	Reverse floating-point subtraction
+
+```
+
+FSUBR和FDIVR指令用来执行反转的减法和除法,结果是destination减去(或者除以)source,结果存在destination当中.这两个指令可以不需要额外的开销就能把操作数调换位置.
+为了说明这些命令是如何工作的,用一个复杂的式子来表示一下.
+
+`((43.65 / 22) + (76.34 * 3.1)) / ((12.43 * 6) – (140.2 / 94.21))`
+
+这个就是通过FPU栈用逆波兰表达式来算结果.通过上节讲到的基本操作和这节的基本运算就能完成整个逆波兰表达式的运算了.
+
+##高阶浮点数运算
+
+浮点数的运算不仅仅是加减乘除.通过FPU可以进行很多更高阶的运算.如果你在为科学计算或者工程应用写汇编的话,你会非常愿意和这些高阶的函数打交到.
+
+```
+
+F2XM1 	Computes 2 to the power of the value in ST0, minus 1
+FABS 	Computes the absolute value of the value in ST0
+FCHS 	Changes the sign of the value in ST0
+FCOS 	Computes the cosine of the value in ST0
+FPATAN 	Computes the partial arctangent of the value in ST0
+FPREM 	Computes the partial remainders from dividing the value in ST0 by the value in ST1
+FPREM1 	Computes the IEEE partial remainders from dividing the value in ST0 by the value in ST1
+FPTAN 	Computes the partial tangent of the value in ST0
+FRNDINT Rounds the value in ST0 to the nearest integer
+FSCALE 	Computes ST0 to the ST1st power
+FSIN 	Computes the sine of the value in ST0
+FSINCOS Computes both the sine and cosine of the value in ST0
+FSQRT 	Computes the square root of the value in ST0
+FYL2X 	Computes the value ST1 * log ST0 (base 2 log)
+FYL2XP1 Computes the value ST1 * log (ST0 + 1) (base 2 log)
+
+```
+大部分都已经说的很明显了,下面一节会具体讲解其中的一些.
+
+##partial remainder 部分余数?
+
+##三角函数
+
+FPU还能算三角函数
+
+###FSIN和FCOS命令
+用来算三角函数的,以后补例子.
+
+###FPTAN和FPATAN命令
+相应的三角函数,以后补例子.
+
+###对数函数
+
+##浮点数条件分支
+不幸的是,比较浮点数不像整型那么简单.浮点数用专有的方法来进行比较.
+###FCOM 指令族
+
+```
+
+FCOM		Compare the ST0 register with the ST1 register.
+FCOM ST(x) 	Compare the ST0 register with another FPU register.
+FCOM source 	Compare the ST0 register with a 32- or 64-bit memory value.
+FCOMP 		Compare the ST0 register with the ST1 register value and pop the stack.
+FCOMP ST(x) 	Compare the ST0 register with another FPU register value and pop the stack.
+FCOMP source 	Compare the ST0 register with a 32 or 64-bit memory value and pop the stack.
+FCOMPP 		Compare the ST0 register with the ST1 register and pop the stack twice.
+FTST 		Compare the ST0 register with the value 0.0.
+
+```
+结果是存在C0,C1和C3这几个status寄存器的条件位中
+
+```
+
+Condition 	C3 	C2 	C0
+ST0 > source 	0 	0 	0
+ST0 < source 	0 	0 	1
+ST0 = source 	1 	0 	0
+
+```
+必须使用FSTSW指令拷贝status寄存器到AX寄存器当中或者其他的内存地址,然后使用TEST指令来决定比较的结果.
+```
+# fcomtest.s - An example of the FCOM instruction
+
+.section .data
+
+value1:
+	.float 10.923
+value2:
+	.float 4.5532
+.section .text
+	.global _start
+_start:
+	nop
+	flds value1
+	fcoms value2
+	fstsw
+	sahf
+	ja greater
+	jb lessthan
+	movq $60,%rax
+	movq $0	,%rdi
+	syscall
+greater:
+	movq $60,%rax
+	movq $1 ,%rdi
+	syscall
+
+lessthan:
+	movq $60,%rax
+	movq $2 ,%rdi
+	syscall
+```
+
+```
+./fcomtest
+echo $?
+1
+```
+
+SAHF 移动AH寄存器的0,2,4,6,7位,分别放到carry,parity,aligned,zero和signed标志中.其他在EFLAGS的位不会受影响.
+```
+C0  到 carry
+C1  到 parity
+C3  到 zero
+```
+所以相应的跳转就是JA,JB,JZ了
+
+### FCOMI 指令族
+很多人会有疑问干吗不把那套东西用一条指令解决?这不来了么 FCOMI就是干这个的.
+
+```
+FCOMI	Compare the ST0 register with the ST(x) register.
+FCOMIP 	Compare the ST0 register with the ST(x) register and pop the stack.
+FUCOMI 	Check for unordered values before the comparison.
+FUCOMIP Check for unordered values before the comparison and pop the stack afterward.
+```
+### FCOMV 指令族
+
+##存取FPU的状态
 
