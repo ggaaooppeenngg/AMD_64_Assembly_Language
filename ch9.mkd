@@ -10,3 +10,111 @@ FPU是一个自给自足的单元,用一些独立于标准寄存器的寄存器�
 
 FPU数据寄存器叫做R0一直到R7(你会发现,它们不是通过这些名字来获取的).这些寄存器不同的是,它们链接在一起构成一个栈.除FPU寄存器之外还包含8个80-bit的寄存器,和3个16-bit的寄存器,叫做*control*,*status*,*tag*
 
+FPU 数据寄存器是R0到R7.这几个寄存器连在一起构成一个环形的的栈.栈顶就作ST(0),寄存器根据栈顶的相对位置叫做ST(x),x可以是1到7.
+
+如果有第几个数存入了栈中,就会覆盖第一个寄存器,然后报一个FPU的异常错误.
+
+第七章讲了浮点数是如何通过FLD命令被放置在FPU栈上的.FILD 是整数,FBLD是BCD数据.
+
+##FPU status control tag 寄存器
+
+因为FPU是独立于处理器的,所以不使用EFLAGS来表示行为结果.FPU拥有一套相关的寄存器来体现这些功能. status,control,tag 寄存器就是用来表示FPU的状态的.
+
+###status  寄存器
+表示FPU的操作状态
+
+
+###control 寄存器
+控制浮点数精度
+
+###tag 寄存器
+
+检测FPU寄存器中的数据的有效性,能够知道什么类型的数据存在了对应的寄存球中
+
+##使用FPU栈
+以例子驱动
+```
+# stacktest.s - An example of working
+.section .data
+value1:
+        .int 40
+value2:
+        .float 92.4405
+value3:
+        .double 211.440321
+.section .bss
+        .lcomm int1,    4   
+        .lcomm control, 2    
+        .lcomm status,  2    
+        .lcomm result,  4
+.section .text
+.globl _start
+_start:
+        nop
+        finit           #initilize FPU
+        fstcw   control #copy control register to memory location
+        fstsw   status  #copy status register to memory location 
+        filds   value1  #loads a doubleword integer value into the FPU register stack
+        fists   int1    #retrieves the value at the top of the register stack,and places it into int1 memory location
+        flds    value2  #load a single-precision floating-point data located in the value2 memory location
+        fldl    value3  #load a dluble-precision floating-point data located in the value3 memory location
+        fst %st(4)      #move data from the ST0 register to ST4 register.
+        fxch %st(1)     #exchange value of ST0 register with ST1 register
+        fstps result    #create signle-precision floating-point value stored in from the value in the ST0 position
+        mov $60,%rax
+        mov $0, %rdi
+        syscall
+
+```
+FINIT初始化FPU.把control和status寄存器设置成默认值,但是不影响存储在FPU寄存器里面的值.
+接下来两条命令将control和status寄存器赋值到内存当中
+通过gdb查看值可以看到
+```
+(gdb) x/2b &control
+0x600110 <control>:	127	3
+(gdb) x/2b &status
+0x600112 <status>:	0	0
+
+```
+control的默认值是0x37f(上面显示的10进制的,而且是小端存储),status的默认值是0x0000.
+FILDS 把一个doubleword 整型存到FPU的寄存器栈中.
+
+```
+(gdb) info all
+.
+.
+st0            40	(raw 0x4004a000000000000000)
+.
+.
+(gdb) x/d &int1
+0x60010c <int1>:	40
+
+```
+40被存到了栈顶,也就是ST0寄存器中,这个值被转换成了double-extended 浮点数.但是转存会内存的时候还是会自动转换成对应的整型的.接下来的命令首先使用了FLDS将内存中的一个单精度的浮点数加载进来,FLDL将一个双精度的浮点数加载了进来.
+现在有三个值存储在FPU栈中,当每个数据加载的时候,每个值都会相对于栈顶向下移动.
+
+```
+(gdb) info all
+st0            211.44032100000001150874595623463392	(raw 0x4006d370b8e086bdf800)
+st1            92.44049835205078125	(raw 0x4005b8e1890000000000)
+st2            40	(raw 0x4004a000000000000000)
+```
+
+最后三个指令用于数据的移动,FST用来把ST0寄存器的值移动到另一个FPU寄存器里面.而FXCH用来将ST0寄存器的值和另一个FPU寄存器交换的值和另一个FPU寄存器交换.
+运行完这些命令之后,就可以看到如下结果
+
+```
+
+(gdb) info all
+st0            92.44049835205078125	(raw 0x4005b8e1890000000000)
+st1            211.44032100000001150874595623463392	(raw 0x4006d370b8e086bdf800)
+st2            40	(raw 0x4004a000000000000000)
+st3            0	(raw 0x00000000000000000000)
+st4            211.44032100000001150874595623463392	(raw 0x4006d370b8e086bdf800)
+
+```
+FST 命令用来拷贝栈顶的值到内存中.
+FSTP 命令也会赋值ST0寄存器的值,但是会弹栈.弹栈之后下面的值都会提升.
+现在我们基本掌握了操作FPU栈的方法,下面就来进入运算部分.
+##基本浮点运算
+
