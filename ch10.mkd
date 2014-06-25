@@ -1,1 +1,194 @@
 #处理字符串
+
+对于人来说处理字符串是很重要的,但是计算机并不是设计来方便人交流的.大多数高级语言提供了字符串处理的模块.在汇编中处理字符串就不那么简单了.
+
+*这章中用于移动字符串的命令也适用于非字符串的数据.移动,更改和比较数字型的数据也能用字符串命令来完成*
+
+##移动字符串
+
+幸运地是,Intel已经有一套完整的指令族来处理字符串了.
+
+##MOVS 命令
+
+MOVS 命令不言而喻是用来移动字符串的.有三种形式的MOVS指令.(我猜64应该还有一个MOVSQ)
+
+```
+MOVSB: Moves a single byte
+MOVSW: Moves a word (2 bytes)
+MOVSL: Moves a doubleword (4 bytes)
+```
+
+MOVS指令用的是隐式的sourc和destination操作数.隐式的source是RSI寄存器,隐式的destination是RDI寄存器.一个指向字符串的源地址,一个指向目的内存的地址.一个好方法去记住就是RSI的S代表source,而RDI的D代表destination.
+
+GNU汇编器有两种方式装载RSI和RDI的值.一种是取地址,在变量前加一个美元符.
+
+`movq $output ,%rdi`
+
+这个命令移动output的64bit的内存地址到EDI寄存器当中.
+
+另一种方法是LEA指令.LEA指令可以加载目标的有效地址.因为Linux使用48bit(ABI似乎是这么说的,不知道64位的是怎样的,不确定) 去定义内存地址.命令的形式是这样的.
+
+`lea output,%rdi`
+
+加载output的地址到RDI寄存器当中.
+
+```
+# movstest1.s - An example of the MOVS instructions
+.section .data
+value1:
+	.ascii "This is a test string.\n"
+.section .bss
+	.lcomm output,23
+.section .text
+.globl _start
+_start:
+	nop
+	lea value1 ,%rsi
+	lea output, %rdi
+	movsb
+	movsw
+	movsl
+	movsq
+	movq $60,%rax
+	movq $0,%rdi
+	syscall
+```
+
+MOVSB 从value1当中移动"T"到output的位置.当MOVSW运行的时候没有移动"Th"而是移动了"hi"到output中.MOVSL移动下4个字节,而MOVSQ移动下8个字节.
+有一个技巧性的地方就是,RSI和RDI可以自动增或者自动减,能够改变方向.有时候这会显得很方便.增减的方向取决于EFLAGS的DF标志.
+没有DF标志,RSI和RDI寄存器都是在每次MOVS指令之后自增的.因为上面的代码没有指定一个DF标志,所以有默认设定主动方向.
+为了确保DF标志被正确设置,可以使用如下的命令:
+
+```
+
+CLD to clear the DF flag
+STD to set the DF flag
+
+```
+当STD命令使用的时候,RSI和RDI在MOVS指令之后递减,所以我们要指向字符串的结尾而不是开头.movstest2.s 展示的就是这样的.
+
+```
+# movstest2.s - A second example of the MOVS instructions
+.section .data
+value1:
+	.ascii “This is a test string.\n”
+.section .bss
+	.lcomm output, 23
+.section .text
+.globl _start
+_start:
+	nop
+	lea value1+22, %rsi
+	lea output+22, %rdi
+	std
+	movsb
+	movsw
+	movsl
+	movsq
+	movq $60,%rax
+	movq $0,%rdi
+	syscall
+```
+这段代码会有点问题,MOVSB结束后自减1,但是MOVSW要两个位置,MOVSW结束后自减2,但是MOVSL要占四个位置,以此类推,最后实际上就movsq复制了8个字节过去.
+如果在拷贝非常长的字符串的话,可以在循环当中使用MOVS指令.
+//TODO:差个例子
+
+##REP 前缀
+
+REP 是用来重复一个字符串指令的,用RCX寄存器来指定重复次数,类似循环,但是没有LOOP指令.REP执行紧接下来的指令,别且执行到RCX为0为止.
+
+### 一个字节一个字节地移动字符串
+
+```
+# reptest1.s - An example of the REP instruction
+.section .data
+value1:
+	.ascii "This is a test string.\n"
+	.section .bss
+	.lcomm output, 23
+.section .text
+	.globl _start
+_start:
+	nop
+	lea value1, %rsi
+	lea output, %rdi
+	movq $23, %rcx
+	cld
+	rep movsb
+	mov $60, %rax
+	mov $0, %rdi
+	syscall
+```
+调试一下可以看到字符串被复制了
+
+```
+Breakpoint 1, _start () at reptest1.s:11
+11		lea value1, %rsi
+(gdb) n
+12		lea output, %rdi
+(gdb) n
+13		movq $23, %rcx
+(gdb) n
+14		cld
+(gdb) n
+15		rep movsb
+(gdb) n
+16		mov $60, %rax
+(gdb) x/s &output
+0x6000f8 <output>:	"This is a test string.\n"
+```
+### 成块成块的移动字符串
+
+字符串不是成块成快组成的,可以能内部有小块,不能按大块来复制.
+
+### 大字符串的移动
+
+### 有相反的顺序移动字符串
+
+REP 指令向前向后都是有效的.
+下面给个例子解释一下.
+
+```
+//TODO:举个例子
+```
+##其他的REP指令
+
+```
+REPE 	Repeat while equal
+REPNE 	Repeat while not equal
+REPNZ 	Repeat while not zero
+REPZ 	Repeat while zero
+```
+REPE和REPZ是synonyms
+
+##存储字符串
+这节关于 STOS和LODS用来存储字符串.
+
+##LODS指令
+LODS是把内存中的字符串加载到RAX寄存器当中.形式是LODSX,X代表移动数据的大小.
+```
+❑ LODSB: Loads a byte into the AL register
+❑ LODSW: Loads a word (2 bytes) into the AX register
+❑ LODSL: Loads a doubleword (4 bytes) into the EAX register
+//TODO:补充q
+```
+LODS 指令用的是隐式的原操作数RSI寄存器.RSI寄存器必须包含要加载的字符串的内存地址.LODS会在加载完数据以后相应自增或自减(由DF标志决定)RSI寄存器.
+
+##STOS指令
+STOS是把寄存器中的字符串存到内存当中.和STOS类似也有几种格式
+
+```
+❑ STOSB: Stores a byte of data from the AL register
+❑ STOSW: Stores a word (2 bytes) of data from the AX register
+❑ STOSL: Stores a doubleword (4 bytes) of data from the EAX register
+//TODO:补充q
+```
+STOS 指令用的也是隐式操作.destination是RDI寄存器.当STOS执行完之后,RDI寄存器也会相应的自增自减.
+重复赋值的时候会非常有用.
+
+##绑定自己的字符串函数
+
+##字符串比较
+
+###CMPS 指令
+
