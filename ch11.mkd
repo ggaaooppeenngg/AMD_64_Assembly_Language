@@ -98,7 +98,86 @@ area:
 
 C风格的传递方式就是使用栈.
 利用栈指针自增来清空栈.
+CALL的时候会在栈顶压入返回的地址.
 
 ##使用单独的函数文件
 
 这一节将会描述如何可以创建函数文件,别且进行汇编和链接.
+使用C风格的函数调用只要的好处是这个函数能够自给自足有足够的封闭性.没有全局变量的参与.
+这种自由又提供了一种好处就是不再需要在把所有代码都只放到主程序文件中了.单独的函数能够放到不同的文件当中,然后用来链接产生最后的目标.
+
+##创建独立的函数文件
+
+定义独立的函数和在主文件中定义是差不多的,但是需要使用全局标签以便于其他程序能够有权使用,像下面这样:
+
+```
+.section .text
+.type area @function
+.globl area
+area:
+
+```
+
+这段代码定义了一个全局变量area,.type定义了一个函数指向函数的开始.完整的函数在文件area.s.
+
+```
+```
+##创建可执行文件
+
+```
+#area.s
+.section .text
+.type area,@function
+.global area
+area:
+	pushq %rbp
+	movq %rsp,%rbp		
+	sub $8,%rsp
+	fldpi
+	fild 16(%rbp)
+	fmul %st(0),%st(0)
+	fmulp %st(0),%st(1)
+	fstp -8(%rbp)
+	movq -8(%rbp),%rax
+	movq %rbp,%rsp
+	popq %rbp
+	ret
+```	
+
+```
+#functest4.s
+.section .data
+precision:
+	.byte 0x7f,0x00
+.section .bss
+	.lcomm result,8
+.section .text
+.globl _start
+_start:
+	nop
+	finit
+	fldcw precision
+	pushq $10
+	call area
+	add $8,%rsp
+	movq %rax,result
+	movq $60,%rax
+	movq $0,%rdi
+	syscall
+```
+
+```
+ as -o area.o area.s
+ as -gstabs -o functest3.o functest4.s
+ ld -o functest4 functest4.o area.o
+```
+
+##使用命令行参数
+
+有时候程序需要接受参数,这个时候就需要命令行的参数,这一节将会讲述如何接受命令行的参数.
+
+###程序的解剖
+
+不同的操作系统传递命令行的参数的方式也是不一样的.
+在解释如何获得命令行参数之前,还是先解释一下Linux是如何从命令行中运行程序的.
+//TODO:
