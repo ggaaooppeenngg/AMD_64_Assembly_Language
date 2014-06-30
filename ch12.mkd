@@ -1,1 +1,222 @@
 #使用Linux系统调用
+
+## Linux 内核
+
+### 内核构成
+
+####内存管理
+
+####设备管理
+
+####文件系统
+
+####进程管理
+
+####内核版本
+
+用`uname -a`可以看到相应的信息
+### 系统调用
+
+####查找系统调用
+
+系统调用一般是定义在`usr/include/asm/unistd.h`文件中
+在64的系统中文件名应该是`unistd_64.h`,`unistd_64.h`包含了所有系统嗲用.头几行是这样的:
+
+
+```
+#ifndef _ASM_X86_UNISTD_64_H
+#define _ASM_X86_UNISTD_64_H 1
+
+#define __NR_read 0
+#define __NR_write 1
+#define __NR_open 2
+#define __NR_close 3
+#define __NR_stat 4
+#define __NR_fstat 5
+#define __NR_lstat 6
+#define __NR_poll 7
+#define __NR_lseek 8
+#define __NR_mmap 9
+#define __NR_mprotect 10
+#define __NR_munmap 11
+#define __NR_brk 12
+#define __NR_rt_sigaction 13
+#define __NR_rt_sigprocmask 14
+
+```
+
+系统调用的前缀都是`__NR_`,后面跟着的就是系统调用号.
+
+####查找系统调用定义
+
+`# man 2 exit`.
+
+2 指的是man pages的第二节,也就是系统调用的那一节.记得包含这个数字,因为有些系统调用和在第一节中包含的命令行命令是重名的.
+exit 想象指定了系统调用的名称.
+
+```
+
+Name: 系统调用名称
+Synopsis: 概括一下系统调用的使用方法
+Description: 大致的介绍
+Return Value: 系统调用结束后的返回值
+
+```
+####一般的系统调用
+
+System Call |Description
+-|-
+访问内存|
+brk |Change the data segment size.
+mlock |Disable paging for parts of memory.
+mlockall |Disable paging for the calling process.
+mmap Map |files or devices into memory.
+mprotect |Control allowable accesses to a region of memory.
+mremap |Remap a virtual memory address.
+msync |Synchronize the file with a memory map.
+munlock |Enable paging for parts of memory.
+munlockall |Enable paging for calling process.
+munmap |Unmap files or devices from memory.
+访问设备|
+access |Check permissions for a device.
+chmod |Change permissions for a device.
+chown |Change the ownership for a device.
+close |Close a device file descriptor.
+dup |Duplicate a device file descriptor.
+fcntl |Manipulate the file descriptor.
+fstat |Get the status of a device.
+ioctl |Control a device’s parameters.
+link |Assign a new name to a file descriptor.
+lseek |Reposition the read/write file offset.
+mknod |Create a new file descriptor for a device.
+open |Open/create a file descriptor for a device or file.
+read |Read from a device file descriptor.
+write |Write to a device file descriptor.
+文件系统|
+chdir |Change the working directory.
+chroot |Change the root directory.
+flock |Apply or remove an advisory lock on an open file.
+statfs |Get file system statistics.
+getcwd |Get the current working directory.
+mkdir |Create a directory.
+rmdir |Remove a directory.
+symlink |Make a new name for a file.
+umask |Set the file creation mask.
+mount |Mount and unmount file systems.
+swapon |Start swapping memory to the file system.
+swapoff |Stop swapping memory to the file system.
+进程控制|
+acct |Turn process accounting on or off.
+capget |Get process capabilities.
+capset |Set process capabilities.
+clone |Create a child process.
+execve |Execute a program.
+exit |Terminate the current process.
+fork |Create a child process.
+getgid |Get the group identity.
+getpgrp |Get/set the process group.
+getppid |Get process identification.
+getpriority |Get the program scheduling priority.
+getuid |Get the user identity.
+kill |Send a signal to kill a process.
+nice |Change the process priority.
+vfork |Create a child process and block the parent.
+
+###使用系统调用
+
+####系统调用的形式
+
+在之前的章节,你应该看到了系统调用的例子,与IA-32不同的是64使用的是寄存器的方式调用系统调用.RAX寄存器用来存储系统调用号.
+接下来的部分将会展示如何调用系统调用.
+
+####系统调用号
+系统调用号是唯一标示系统调用的ID.在系统调用之前RAX应该载入相应的系统调用号.一个exit系统调用的例子已经在书中出现过很多次:
+
+```
+
+movq $60,%rax
+movq $0, %rdi
+syscall
+
+```
+在之前提到的`unistd.h`中能够看到`#define __NR_exit`对应了60这个整数,也就是说将60载入RAX寄存器当中就能正确使用exit这个系统调用.
+
+####系统调用的参数
+
+系统调用需要把参数存到寄存器当中,如果把错误的值存到了错误的寄存器里面的话,可能会导致灾难性的结果.
+
+RAX用来装载系统调用号,RIP,RBP,RSP不能用,因为这些寄存器的值需要保留,不然会影响程序的执行.
+
+系统调用的参数按照下面的顺序给出
+
+Syscall #|Param 1	|Param 2	|Param 3	|Param 4|Param 5|Param 6|Return Value
+-|-|-|-|-|-|-|-
+rax	|rdi	|rsi	|rdx	|r10	|r8	|r9 |rax
+
+如果系统调用需要超过6个参数的话,就要通过内存的指针来传递参数了.
+
+//TODO:前面write的例子写了无数遍以后再补充
+
+####系统调用返回值
+
+系统调用的返回值存在RAX寄存器当中.
+
+###高阶的系统调用返回值
+
+有时候返回值会比较复杂,这一节会将如何返回结构体.
+
+####sysinfo 系统调用
+
+sysinfo 系统调用返回的是系统和相应资源的信息.
+
+sysinfo 的参数是一个指向sysinfo结构体的指针,包含了系统所需的信息.
+
+TODO://结构体的详情
+
+我们需要定义一个内存的结构来返回
+
+```
+
+.section .data
+result:
+uptime:
+.int 0
+load1:
+.int 0
+load5:
+.int 0
+load15:
+.int 0
+totalram:
+.int 0
+freeram:
+.int 0
+sharedram:
+.int 0
+bufferram:
+.int 0
+totalswap:
+.int 0
+freeswap:
+.int 0
+totalhigh:
+.int 0
+memunit:
+.int 0
+
+```
+
+####使用返回的结构体
+
+把$Result  传到RDI就能使用该系统调用.
+
+####察看结果
+
+####跟踪系统调用
+
+使用`strace`命令
+//TODO:跟踪过程
+
+####附着在进程上
+
+###系统调用对阵C函数库
